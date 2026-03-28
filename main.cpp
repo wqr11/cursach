@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdexcept>
 #include <vector>
+#include <string>
 
 using std::abs;
 using std::cbrt;
@@ -15,9 +16,9 @@ public:
     unsigned int rows;
     unsigned int cols;
 
-    double at(unsigned int i, unsigned int j)
+    double at(int i, int j)
     {
-        if (i > this->rows || j > cols)
+        if (i > this->rows || j > this->cols || i < 0 || j < 0)
         {
             std::string errMsg = "Can't access Mat element at " + std::to_string(i) + " " + std::to_string(j);
 
@@ -25,6 +26,14 @@ public:
         }
 
         return this->items[i * cols + j];
+    }
+
+    /**
+     * Currently implementing check for isnan
+     */
+    bool exists(int i, int j)
+    {
+        return i < rows && j < cols && i >= 0 && j >= 0 && !isnan(at(i, j));
     }
 
     void set(unsigned int i, unsigned int j, double val)
@@ -36,11 +45,19 @@ public:
     {
         double cur = this->at(i, j);
 
+        if (std::isnan(cur))
+            return false;
+
+        double s1 = this->exists(i + 1, j) ? cur < this->at(i + 1, j) : true;
+        double s2 = this->exists(i, j + 1) ? cur < this->at(i, j + 1) : true;
+        double s3 = this->exists(i - 1, j) ? cur < this->at(i - 1, j) : true;
+        double s4 = this->exists(i, j - 1) ? cur < this->at(i, j - 1) : true;
+
         /**
          * Does not include diagonals for now
          */
         if (
-            cur < this->at(i + 1, j) && cur < this->at(i, j + 1) && cur < this->at(i - 1, j) && cur < this->at(i, j - 1))
+            s1 && s2 && s3 && s4)
         {
             return true;
         }
@@ -52,16 +69,39 @@ public:
     {
         double cur = this->at(i, j);
 
+        if (std::isnan(cur))
+            return false;
+
+        double s1 = this->exists(i + 1, j) ? cur > this->at(i + 1, j) : true;
+        double s2 = this->exists(i, j + 1) ? cur > this->at(i, j + 1) : true;
+        double s3 = this->exists(i - 1, j) ? cur > this->at(i - 1, j) : true;
+        double s4 = this->exists(i, j - 1) ? cur > this->at(i, j - 1) : true;
+
         /**
          * Does not include diagonals for now
          */
         if (
-            cur > this->at(i + 1, j) && cur > this->at(i, j + 1) && cur > this->at(i - 1, j) && cur > this->at(i, j - 1))
+            s1 && s2 && s3 && s4)
         {
             return true;
         }
 
         return false;
+    }
+
+    void print()
+    {
+        for (int i = 0; i < this->rows; i++)
+        {
+            for (int j = 0; j < this->cols; j++)
+            {
+                std::cout << this->at(i, j) << " ";
+            }
+
+            std::cout << '\n';
+        }
+
+        std::cout << std::endl;
     }
 
     Mat(unsigned int i, unsigned int j)
@@ -96,9 +136,14 @@ public:
     }
 };
 
+/**
+ * @returns
+ * NAN if (x^2 + y^3) is zero;
+ * else double
+ */
 double F(double x, double y)
 {
-    return sqrt(x) + cbrt(y) - (1 / (sqrt(x * x + y * y * y)));
+    return sqrt(x) + cbrt(y) - (1.0 / (sqrt(x * x + y * y * y)));
 }
 
 int main()
@@ -120,7 +165,7 @@ int main()
     std::vector<Extrema> maximas = std::vector<Extrema>();
 
     /**
-     * Populate the matrix with F(x,y) values
+     * 1) Populate the matrix with F(x,y) values
      */
     for (int i = 0; i < m.rows; i++)
     {
@@ -133,23 +178,26 @@ int main()
         }
     }
 
+    /**
+     * 2) Find minimas & maximas
+     */
     for (int i = 0; i < m.rows; i++)
     {
         for (int j = 0; j < m.cols; j++)
         {
             if (m.is_min(i, j))
             {
-                minimas.emplace_back(i, j);
+                minimas.emplace_back(i + 1, j + 1);
             }
             else if (m.is_max(i, j))
             {
-                maximas.emplace_back(i, j);
+                maximas.emplace_back(i + 1, j + 1);
             }
         }
     }
 
     /**
-     * Find cell distances
+     * 3) Find cell distances between minimas and maximas
      */
     for (int min = 0, minlen = minimas.size(); min < minlen; min++)
     {
@@ -163,4 +211,22 @@ int main()
             std::cout << dist << '\n';
         }
     }
+
+    m.print();
+
+    std::cout << "MINIMAS" << "\n";
+    for (int i = 0; i < minimas.size(); i++)
+    {
+        Extrema e = minimas.at(i);
+        std::cout << std::string("(" + std::to_string(e.i) + "," + std::to_string(e.j) + ")") << " ";
+    }
+    std::cout << "\n";
+
+    std::cout << "MAXIMAS" << "\n";
+    for (int i = 0; i < maximas.size(); i++)
+    {
+        Extrema e = maximas.at(i);
+        std::cout << std::string("(" + std::to_string(e.i) + "," + std::to_string(e.j) + ")") << " ";
+    }
+    std::cout << "\n";
 };
