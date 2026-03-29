@@ -1,7 +1,6 @@
 #include <iostream>
 #include <math.h>
 #include <stdexcept>
-#include <vector>
 #include <string>
 
 using std::abs;
@@ -9,14 +8,67 @@ using std::cbrt;
 using std::pow;
 using std::sqrt;
 
+template <typename T>
+class DArray
+{
+private:
+    int size;
+    int capacity;
+    T *arr;
+
+public:
+    void push_back(T item)
+    {
+        if (this->capacity == (this->size - 1))
+        {
+            this->capacity *= 2;
+            T *newArr = new T[capacity * 2]();
+            for (int i = 0; i < this->size; i++)
+                newArr[i] = arr[i];
+            delete[] arr;
+            this->arr = newArr;
+            newArr = nullptr;
+        }
+
+        this->arr[size] = item;
+        this->size++;
+    }
+
+    int get_size()
+    {
+        return this->size;
+    }
+
+    T at(int index)
+    {
+        return this->arr[index];
+    }
+
+    DArray(int capacity) : size(0), capacity(capacity), arr(new T[capacity]()) {}
+    ~DArray()
+    {
+        delete[] this->arr;
+        this->arr = nullptr;
+    }
+};
+
+struct MatElement
+{
+    double F_value;
+    double x;
+    double y;
+    unsigned int i;
+    unsigned int j;
+};
+
 class Mat
 {
 public:
-    double *items;
+    MatElement **items;
     unsigned int rows;
     unsigned int cols;
 
-    double at(int i, int j)
+    MatElement *at(int i, int j)
     {
         if (i > this->rows || j > this->cols || i < 0 || j < 0)
         {
@@ -25,7 +77,7 @@ public:
             throw std::runtime_error(errMsg);
         }
 
-        return this->items[i * cols + j];
+        return (this->items[i * cols + j]);
     }
 
     /**
@@ -33,25 +85,25 @@ public:
      */
     bool exists(int i, int j)
     {
-        return i < rows && j < cols && i >= 0 && j >= 0 && !isnan(at(i, j));
+        return i < rows && j < cols && i >= 0 && j >= 0 && !isnan(at(i, j)->F_value);
     }
 
-    void set(unsigned int i, unsigned int j, double val)
+    void set(unsigned int i, unsigned int j, MatElement *el)
     {
-        this->items[i * cols + j] = val;
+        this->items[i * cols + j] = el;
     }
 
     bool is_min(unsigned i, unsigned j)
     {
-        double cur = this->at(i, j);
+        double cur = this->at(i, j)->F_value;
 
         if (std::isnan(cur))
             return false;
 
-        double s1 = this->exists(i + 1, j) ? cur < this->at(i + 1, j) : true;
-        double s2 = this->exists(i, j + 1) ? cur < this->at(i, j + 1) : true;
-        double s3 = this->exists(i - 1, j) ? cur < this->at(i - 1, j) : true;
-        double s4 = this->exists(i, j - 1) ? cur < this->at(i, j - 1) : true;
+        double s1 = this->exists(i + 1, j) ? cur < this->at(i + 1, j)->F_value : true;
+        double s2 = this->exists(i, j + 1) ? cur < this->at(i, j + 1)->F_value : true;
+        double s3 = this->exists(i - 1, j) ? cur < this->at(i - 1, j)->F_value : true;
+        double s4 = this->exists(i, j - 1) ? cur < this->at(i, j - 1)->F_value : true;
 
         /**
          * Does not include diagonals for now
@@ -67,15 +119,15 @@ public:
 
     bool is_max(unsigned i, unsigned j)
     {
-        double cur = this->at(i, j);
+        double cur = this->at(i, j)->F_value;
 
         if (std::isnan(cur))
             return false;
 
-        double s1 = this->exists(i + 1, j) ? cur > this->at(i + 1, j) : true;
-        double s2 = this->exists(i, j + 1) ? cur > this->at(i, j + 1) : true;
-        double s3 = this->exists(i - 1, j) ? cur > this->at(i - 1, j) : true;
-        double s4 = this->exists(i, j - 1) ? cur > this->at(i, j - 1) : true;
+        double s1 = this->exists(i + 1, j) ? cur > this->at(i + 1, j)->F_value : true;
+        double s2 = this->exists(i, j + 1) ? cur > this->at(i, j + 1)->F_value : true;
+        double s3 = this->exists(i - 1, j) ? cur > this->at(i - 1, j)->F_value : true;
+        double s4 = this->exists(i, j - 1) ? cur > this->at(i, j - 1)->F_value : true;
 
         /**
          * Does not include diagonals for now
@@ -95,7 +147,7 @@ public:
         {
             for (int j = 0; j < this->cols; j++)
             {
-                std::cout << this->at(i, j) << " ";
+                std::cout << this->at(i, j)->F_value << " ";
             }
 
             std::cout << '\n';
@@ -113,26 +165,18 @@ public:
 
         this->rows = i;
         this->cols = j;
-        this->items = new double[i * j]();
+        this->items = new MatElement *[i * j]();
     }
 
     ~Mat()
     {
-        delete[] this->items;
+        for (int i = 0, len = rows * cols; i < len; i++)
+        {
+            delete this->items[i];
+            this->items[i] = nullptr;
+        }
+        delete[] items;
         this->items = nullptr;
-    }
-};
-
-class Extrema
-{
-public:
-    double i;
-    double j;
-
-    Extrema(double i, double j)
-    {
-        this->i = i;
-        this->j = j;
     }
 };
 
@@ -159,22 +203,22 @@ int main()
     double x_step = (x2 - x1) / (n - 1);
     double y_step = (y2 - y1) / (n - 1);
 
-    Mat m(n, n); // Allocate on stack
+    Mat m(n, n);
 
-    std::vector<Extrema> minimas = std::vector<Extrema>();
-    std::vector<Extrema> maximas = std::vector<Extrema>();
+    DArray<MatElement *> *minimas = new DArray<MatElement *>(1024);
+    DArray<MatElement *> *maximas = new DArray<MatElement *>(1024);
 
     /**
      * 1) Populate the matrix with F(x,y) values
      */
-    for (int i = 0; i < m.rows; i++)
+    for (unsigned int i = 0; i < m.rows; i++)
     {
-        for (int j = 0; j < m.cols; j++)
+        for (unsigned int j = 0; j < m.cols; j++)
         {
             double x = x1 + x_step * i;
             double y = y1 + y_step * j;
 
-            m.set(i, j, F(x, y));
+            m.set(i, j, new MatElement{F(x, y), x, y, i + 1, j + 1});
         }
     }
 
@@ -187,11 +231,11 @@ int main()
         {
             if (m.is_min(i, j))
             {
-                minimas.emplace_back(i + 1, j + 1);
+                minimas->push_back(m.at(i, j));
             }
             else if (m.is_max(i, j))
             {
-                maximas.emplace_back(i + 1, j + 1);
+                maximas->push_back(m.at(i, j));
             }
         }
     }
@@ -199,14 +243,14 @@ int main()
     /**
      * 3) Find cell distances between minimas and maximas
      */
-    for (int min = 0, minlen = minimas.size(); min < minlen; min++)
+    for (int min = 0, minlen = minimas->get_size(); min < minlen; min++)
     {
-        for (int max = 0, maxlen = maximas.size(); max < maxlen; max++)
+        for (int max = 0, maxlen = maximas->get_size(); max < maxlen; max++)
         {
-            Extrema &minima = minimas.at(min);
-            Extrema &maxima = maximas.at(max);
+            MatElement *minima = minimas->at(min);
+            MatElement *maxima = maximas->at(max);
 
-            int dist = abs(maxima.i - minima.i) + abs(maxima.j - minima.j);
+            int dist = abs(maxima->i - minima->i) + abs(maxima->j - minima->j);
 
             std::cout << dist << '\n';
         }
@@ -215,18 +259,21 @@ int main()
     m.print();
 
     std::cout << "MINIMAS" << "\n";
-    for (int i = 0; i < minimas.size(); i++)
+    for (int i = 0; i < minimas->get_size(); i++)
     {
-        Extrema e = minimas.at(i);
-        std::cout << std::string("(" + std::to_string(e.i) + "," + std::to_string(e.j) + ")") << " ";
+        MatElement *e = minimas->at(i);
+        std::cout << std::string("(" + std::to_string(e->i) + "," + std::to_string(e->j) + ")") << " ";
     }
     std::cout << "\n";
 
     std::cout << "MAXIMAS" << "\n";
-    for (int i = 0; i < maximas.size(); i++)
+    for (int i = 0; i < maximas->get_size(); i++)
     {
-        Extrema e = maximas.at(i);
-        std::cout << std::string("(" + std::to_string(e.i) + "," + std::to_string(e.j) + ")") << " ";
+        MatElement *e = maximas->at(i);
+        std::cout << std::string("(" + std::to_string(e->i) + "," + std::to_string(e->j) + ")") << " ";
     }
     std::cout << "\n";
+
+    delete minimas;
+    delete maximas;
 };
