@@ -20,7 +20,7 @@ public:
         if (this->size >= this->capacity)
         {
             this->capacity *= 2;
-            T *newArr = new T[capacity * 2]();
+            T *newArr = new T[capacity]();
 
             for (int i = 0; i < this->size; i++)
                 newArr[i] = arr[i];
@@ -69,10 +69,10 @@ public:
 
     MatElement *at(int i, int j)
     {
-        if (i > this->rows || j > this->cols || i < 0 || j < 0)
+        if (i >= this->rows || j >= this->cols || i < 0 || j < 0)
         {
             std::cout << "Can't access MatElement at " << i << " " << j << '\n';
-            abort();
+            exit(EXIT_FAILURE);
         }
 
         return (this->items[i * cols + j]);
