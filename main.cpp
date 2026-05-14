@@ -1,7 +1,5 @@
 #include <iostream>
 #include <math.h>
-#include <stdexcept>
-#include <string>
 
 using std::abs;
 using std::cbrt;
@@ -19,10 +17,11 @@ private:
 public:
     void push_back(T item)
     {
-        if (this->capacity == (this->size - 1))
+        if (this->size >= this->capacity)
         {
             this->capacity *= 2;
             T *newArr = new T[capacity * 2]();
+
             for (int i = 0; i < this->size; i++)
                 newArr[i] = arr[i];
             delete[] arr;
@@ -72,9 +71,8 @@ public:
     {
         if (i > this->rows || j > this->cols || i < 0 || j < 0)
         {
-            std::string errMsg = "Can't access Mat element at " + std::to_string(i) + " " + std::to_string(j);
-
-            throw std::runtime_error(errMsg);
+            std::cout << "Can't access MatElement at " << i << " " << j << '\n';
+            abort();
         }
 
         return (this->items[i * cols + j]);
@@ -152,8 +150,6 @@ public:
 
             std::cout << '\n';
         }
-
-        std::cout << std::endl;
     }
 
     Mat(unsigned int i, unsigned int j)
@@ -240,6 +236,8 @@ int main()
         }
     }
 
+    std::cout << "DISTANCES" << "\n";
+
     /**
      * 3) Find cell distances between minimas and maximas
      */
@@ -255,6 +253,8 @@ int main()
             std::cout << dist << '\n';
         }
     }
+
+    std::cout << "MATRIX" << "\n";
 
     m.print();
 
